@@ -343,19 +343,23 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
     uint256 public constant INITIAL_SUPPLY = 613333328 * (10 ** uint256(decimals));
     uint256 public fundForSale = 297 * (10 ** 5) * (10 ** uint256(decimals));
     uint256 public fundDevelopers = 122666665 * (10 ** 5) * (10 ** uint256(decimals));
-    uint256 public fundBounty = 24533333 * (10 ** 5) * (10 ** uint256(decimals));
-    uint256 public fundBonus = 0;
-    uint256 public fundInvestment = 0;
-    uint256 public fundAdministration = 0;
+    //uint256 public fundBounty = 24533333 * (10 ** 5) * (10 ** uint256(decimals));
+
+    address public addressFundDevelopers = 0x326B7740e5E806fc731200A3ea92f588a86568A3;
+    address public addressFundBounty = 0xE585b723bDc6324dD55cf614fa83f61A88D5b3D8;
+    address public addressFundBonus = 0x1f318fE745bEE511a72A8AB2b704a5F285587335;
+    address public addressFundInvestment = 0x80A0BE0Ab330E48dE8E37277b838b9eB0Bb3bb6f;
+    address public addressFundAdministration = 0xFe3905B9Bd7C0c4164873180dfE0ee85FbFe9F19;
+
+
     uint256[] public discount  = [50, 25, 20, 15, 10, 5];
 
 
 
     uint256 public weiMinSalePreIco = 1190 * 10 ** 15;
     uint256 public weiMinSaleIco = 29 * 10 ** 15;
-    uint256 rate = 3362; // $0.25 = 1 token => $1,000 = 1.19 ETH =>
+    uint256 priceToken = 3362; // $0.25 = 1 token => $1,000 = 1.19 ETH =>
                          //4,000 token = 1.19 ETH => 1 ETH = 4,000/1.19 = 3362 token
-
 
     uint256 public countInvestor;
     bool public saleToken = true;
@@ -389,9 +393,9 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
         buyTokens(msg.sender);
     }
 
-    function setRate(uint256 _newRate) public onlyOwner {
-        require(_newRate > 0);
-        rate = _newRate;
+    function setPriceToken(uint256 _newPrice) public onlyOwner {
+        require(_newPrice > 0);
+        priceToken = _newPrice;
     }
 
     // low level token purchase function
@@ -420,7 +424,7 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
         uint256 currentPeriod = getPeriod(currentDate);
         uint256 amountOfTokens = 0;
         if(currentPeriod < 6){
-            amountOfTokens = _weiAmount.mul(rate).mul(discount[currentPeriod]).div(100);
+            amountOfTokens = _weiAmount.mul(priceToken).mul(discount[currentPeriod]).div(100);
         }
         if(currentPeriod == 0 && _weiAmount < weiMinSalePreIco){
             amountOfTokens = 0;
@@ -483,6 +487,35 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
         }
         return 10;
     }
+
+    function mintAfterIcoPeriod() public returns (bool) {
+        uint256 totalCost = tokenAllocated.mul(priceToken);
+        uint256 fundBonus = 0;
+        uint256 fundInvestment = 0;
+        uint256 fundBounty = 0;
+        uint256 fundAdministration = 0;
+        uint256 fundPublicWallet = 0;
+        //uint256 totalFunds =
+        uint256 nonSoldToken = totalSupply.sub(tokenAllocated);
+        uint256 mintTokens;
+        if(weiRaised.div(totalCost) < 2){
+            mintTokens = nonSoldToken.mul(25).div(100);
+            tokenAllocated = tokenAllocated.add(mintTokens);
+
+            fundBonus = fundBonus.add(mintTokens.mul(10).div(100));
+            fundInvestment = fundInvestment.add(mintTokens.mul(50).div(100));
+            fundBounty = fundBounty.add(mintTokens.mul(5).div(100));
+            fundAdministration = fundAdministration.add(mintTokens.mul(5).div(100));
+            fundPublicWallet = mintTokens.sub(fundBonus.add(fundInvestment).add(fundBounty).add(fundAdministration));
+
+            balances[addressFundBonus] = balances[addressFundBonus].add(fundBonus);
+            balances[addressFundBounty] = balances[addressFundBounty].add(fundBounty);
+            balances[addressFundInvestment] = balances[addressFundInvestment].add(fundInvestment);
+            balances[addressFundAdministration] = balances[addressFundAdministration].add(fundAdministration);
+            balances[owner] = balances[owner].add(fundPublicWallet);
+        }
+    }
+
 
     function deposit(address investor) internal {
         require(state == State.Active);
