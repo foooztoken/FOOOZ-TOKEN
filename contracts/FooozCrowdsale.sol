@@ -342,16 +342,20 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
 
     uint256 public constant INITIAL_SUPPLY = 613333328 * (10 ** uint256(decimals));
     uint256 public fundForSale = 297 * (10 ** 5) * (10 ** uint256(decimals));
-    uint256 public fundDevelopers = 33 * (10 ** 5) * (10 ** uint256(decimals));
-    uint256 public fundBounty = 0;
+    uint256 public fundDevelopers = 122666665 * (10 ** 5) * (10 ** uint256(decimals));
+    uint256 public fundBounty = 24533333 * (10 ** 5) * (10 ** uint256(decimals));
     uint256 public fundBonus = 0;
     uint256 public fundInvestment = 0;
     uint256 public fundAdministration = 0;
+    uint256[] public discount  = [50, 25, 20, 15, 10, 5];
 
 
 
-    uint256 public weiMinSalePreIco = 1166 * 10 ** 15;
+    uint256 public weiMinSalePreIco = 1190 * 10 ** 15;
     uint256 public weiMinSaleIco = 29 * 10 ** 15;
+    uint256 rate = 3362; // $0.25 = 1 token => $1,000 = 1.19 ETH =>
+                         //4,000 token = 1.19 ETH => 1 ETH = 4,000/1.19 = 3362 token
+
 
     uint256 public countInvestor;
     bool public saleToken = true;
@@ -385,12 +389,9 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
         buyTokens(msg.sender);
     }
 
-    function startSale() public onlyOwner {
-        saleToken = true;
-    }
-
-    function stopSale() public onlyOwner {
-        saleToken = false;
+    function setRate(uint256 _newRate) public onlyOwner {
+        require(_newRate > 0);
+        rate = _newRate;
     }
 
     // low level token purchase function
@@ -413,38 +414,72 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
         return tokens;
     }
 
-    function getTotalAmountOfTokens(uint256 _weiAmount) internal pure returns (uint256) {
-        uint256 amountOfTokens = _weiAmount.mul(1000);
+    function getTotalAmountOfTokens(uint256 _weiAmount) internal view returns (uint256) {
+        uint256 currentDate = now;
+        //currentDate = 1526342400; //for test's (Tue, 15 May 2018 00:00:00 GMT)
+        uint256 currentPeriod = getPeriod(currentDate);
+        uint256 amountOfTokens = 0;
+        if(currentPeriod < 6){
+            amountOfTokens = _weiAmount.mul(rate).mul(discount[currentPeriod]).div(100);
+        }
+        if(currentPeriod == 0 && _weiAmount < weiMinSalePreIco){
+            amountOfTokens = 0;
+        }
+        if(0 < currentPeriod && currentPeriod < 6 && _weiAmount < weiMinSaleIco){
+            amountOfTokens = 0;
+        }
         return amountOfTokens;
     }
 
     /**
-    * Pre-ICO sale starts on 22nd of March, ends on 30st March 2018
-    * 1st. Stage starts 31st of March , ends on 10th of April , 2018
-    * 2nd. Stage starts 11th of April , ends on 21nd of April , 2018
-    * 3rd. Stage starts 22nd of April , ends on 2rd of May , 2018
-    * 4th.  Stage starts 3rd  of May, ends on 13th  of May , 2018
-    * 4th.  Stage starts 14th of May, ends on 25th of May , 2018
+    * Pre-ICO sale starts on 31 of March, ends on 06 April 2018
+    * 1st. Stage starts 07 of April , ends on 16 of April , 2018
+    * 2nd. Stage starts 17 of April , ends on 26 of April , 2018
+    * 3rd. Stage starts 27 of April , ends on 06 of May , 2018
+    * 4th. Stage starts 07 of May,    ends on 16  of May , 2018
+    * 4th. Stage starts 17 of May,    ends on 31 of May , 2018
     */
     function getPeriod(uint256 _currentDate) public pure returns (uint) {
-        //1525132800 - March, 22, 2018 00:00:00 && 1527724799 - May, 30, 2018 23:59:59
-        //1530489600 - March, 31, 2018 00:00:00 && 1531785599 - Jul, 16, 2018 23:59:59
-        //1531785600 - April, 11, 2018 00:00:00 && 1533081599 - Jul, 31, 2018 23:59:59
-        //1533081600 - April, 22, 2018 00:00:00 && 1535673599 - Aug, 30, 2018 23:59:59
-        //1533081600 - May, 03, 2018 00:00:00 && 1535673599 - May, 30, 2018 23:59:59
-        //1533081600 - May, 14, 2018 00:00:00 && 1535673599 - May, 30, 2018 23:59:59
-
-        if( 1525132800 <= _currentDate && _currentDate <= 1527724799){
+        //1522454400 - March, 31, 2018 00:00:00 && 1523059199 - April, 06, 2018 23:59:59
+        if( 1522454400 <= _currentDate && _currentDate <= 1523059199){
             return 0;
         }
-        if( 1530489600 <= _currentDate && _currentDate <= 1531785599){
+        //1523059200 - April, 07, 2018 00:00:00 && 1523923199 - April, 16, 2018 23:59:59
+        if( 1523059200 <= _currentDate && _currentDate <= 1523923199){
             return 1;
         }
-        if( 1531785600 <= _currentDate && _currentDate <= 1533081599){
+        //1523923200 - April, 17, 2018 00:00:00 && 1524787199 - April, 26, 2018 23:59:59
+        if( 1523923200 <= _currentDate && _currentDate <= 1524787199){
             return 2;
         }
-        if( 1533081600 <= _currentDate && _currentDate <= 1535673599){
+        //1524787200 - April, 27, 2018 00:00:00 && 1525651199 - May,   06, 2018 23:59:59
+        if( 1524787200 <= _currentDate && _currentDate <= 1525651199){
             return 3;
+        }
+        //1525651200 - May,   07, 2018 00:00:00 && 1526515199 - May,   16, 2018 23:59:59
+        if( 1525651200 <= _currentDate && _currentDate <= 1526515199){
+            return 4;
+        }
+        //1526515200 - May,   17, 2018 00:00:00 && 1527811199 - May,   31, 2018 23:59:59
+        if( 1526515200 <= _currentDate && _currentDate <= 1527811199){
+            return 5;
+        }
+        return 10;
+    }
+
+    function getAfterIcoPeriod(uint256 _currentDate) public pure returns (uint) {
+        uint256 endIco = 1527811199; // May,   31, 2018 23:59:59
+        if( endIco < _currentDate && _currentDate <= endIco + 2 years){
+            return 100;
+        }
+        if( endIco + 2 years < _currentDate && _currentDate <= endIco + 4 years){
+            return 200;
+        }
+        if( endIco + 4 years < _currentDate && _currentDate <= endIco + 6 years){
+            return 300;
+        }
+        if( endIco + 6 years < _currentDate && _currentDate <= endIco + 8 years){
+            return 400;
         }
         return 10;
     }
