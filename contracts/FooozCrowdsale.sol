@@ -219,19 +219,19 @@ contract Ownable {
      * @dev Throws if called by any account other than the owner.
      */
     modifier onlyOwner() {
-        require(msg.sender == owner);
+        require(msg.sender == owner || msg.sender == ownerTwo);
         _;
     }
 
 
     /**
      * @dev Allows the current owner to transfer control of the contract to a newOwner.
-     * @param newOwner The address to transfer ownership to.
+     * @param _newOwner The address to transfer ownership to.
      */
-    function changeOwner(address newOwner) onlyOwner public {
-        require(newOwner != address(0));
-        OwnerChanged(owner, newOwner);
-        owner = newOwner;
+    function changeOwnerTwo(address _newOwner) onlyOwner public {
+        require(_newOwner != address(0));
+        OwnerChanged(owner, _newOwner);
+        ownerTwo = _newOwner;
     }
 
 }
@@ -319,7 +319,7 @@ contract Crowdsale is Ownable {
 
     uint256 public tokenAllocated;
 
-    uint256 public hardWeiCap = 116600 * (10 ** 18);
+    uint256 public hardWeiCap = 119000 * (10 ** 18);
 
     function Crowdsale(
     address _wallet
@@ -341,9 +341,7 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
     mapping (address => uint256) public deposited;
 
     uint256 public constant INITIAL_SUPPLY = 613333328 * (10 ** uint256(decimals));
-    uint256 public fundForSale = 297 * (10 ** 5) * (10 ** uint256(decimals));
-    uint256 public fundDevelopers = 122666665 * (10 ** 5) * (10 ** uint256(decimals));
-    //uint256 public fundBounty = 24533333 * (10 ** 5) * (10 ** uint256(decimals));
+    uint256 public fundForSale = 466133330 * (10 ** uint256(decimals));
 
     address public addressFundDevelopers = 0x326B7740e5E806fc731200A3ea92f588a86568A3;
     address public addressFundBounty = 0xE585b723bDc6324dD55cf614fa83f61A88D5b3D8;
@@ -362,19 +360,20 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
                          //4,000 token = 1.19 ETH => 1 ETH = 4,000/1.19 = 3362 token
 
     uint256 public countInvestor;
-    bool public saleToken = true;
+    uint256 public currentAfterIcoPeriod;
 
     event TokenPurchase(address indexed beneficiary, uint256 value, uint256 amount);
     event TokenLimitReached(uint256 tokenRaised, uint256 purchasedToken);
     event HardCapReached();
     event Finalized();
-    event Burn(address indexed burner, uint256 value);
 
-    function FooozCrowdsale (address _owner) public
+    function FooozCrowdsale (address _owner, address _ownerTwo) public
     Crowdsale(_owner)
     {
         require(_owner != address(0));
+        require(_ownerTwo != address(0));
         owner = _owner;
+        ownerTwo = _ownerTwo;
         //owner = msg.sender; //for test's
         transfersEnabled = true;
         mintingFinished = false;
@@ -401,7 +400,6 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
     // low level token purchase function
     function buyTokens(address _investor) public inState(State.Active) payable returns (uint256){
         require(_investor != address(0));
-        require(saleToken == true);
         uint256 weiAmount = msg.value;
         uint256 tokens = validPurchaseTokens(weiAmount);
         if (tokens == 0) {revert();}
@@ -420,11 +418,11 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
 
     function getTotalAmountOfTokens(uint256 _weiAmount) internal view returns (uint256) {
         uint256 currentDate = now;
-        //currentDate = 1526342400; //for test's (Tue, 15 May 2018 00:00:00 GMT)
+        currentDate = 1526342400; //for test's (Tue, 15 May 2018 00:00:00 GMT)
         uint256 currentPeriod = getPeriod(currentDate);
         uint256 amountOfTokens = 0;
         if(currentPeriod < 6){
-            amountOfTokens = _weiAmount.mul(priceToken).mul(discount[currentPeriod]).div(100);
+            amountOfTokens = _weiAmount.mul(priceToken).mul(discount[currentPeriod] + 100).div(100);
         }
         if(currentPeriod == 0 && _weiAmount < weiMinSalePreIco){
             amountOfTokens = 0;
@@ -485,20 +483,27 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
         if( endIco + 6 years < _currentDate && _currentDate <= endIco + 8 years){
             return 400;
         }
-        return 10;
+        return 0;
     }
 
     function mintAfterIcoPeriod() public returns (bool) {
-        uint256 totalCost = tokenAllocated.mul(priceToken);
+        uint256 totalCost = tokenAllocated.div(priceToken);
         uint256 fundBonus = 0;
         uint256 fundInvestment = 0;
         uint256 fundBounty = 0;
         uint256 fundAdministration = 0;
         uint256 fundPublicWallet = 0;
+        //fundForSale
         //uint256 totalFunds =
         uint256 nonSoldToken = totalSupply.sub(tokenAllocated);
-        uint256 mintTokens;
-        if(weiRaised.div(totalCost) < 2){
+        uint256 mintTokens = 0;
+        uint256 currentDate = now;
+        bool changePeriod = false;
+        if (currentAfterIcoPeriod < getAfterIcoPeriod(currentDate)){
+            currentAfterIcoPeriod = currentAfterIcoPeriod.add(getAfterIcoPeriod(currentDate));
+            changePeriod = true;
+        }
+        if(weiRaised.mul(100).div(totalCost) < 200 || changePeriod){
             mintTokens = nonSoldToken.mul(25).div(100);
             tokenAllocated = tokenAllocated.add(mintTokens);
 
@@ -516,7 +521,6 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
         }
     }
 
-
     function deposit(address investor) internal {
         require(state == State.Active);
         deposited[investor] = deposited[investor].add(msg.value);
@@ -524,8 +528,13 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
 
     function mintForOwner(address _wallet) internal returns (bool result) {
         result = false;
+        uint256 fundBounty = 24533333 * (10 ** uint256(decimals));
+        uint256 fundDevelopers = 122666665 * (10 ** uint256(decimals));
         require(_wallet != address(0));
-        balances[_wallet] = balances[_wallet].add(INITIAL_SUPPLY);
+        balances[addressFundDevelopers] = balances[addressFundDevelopers].add(fundDevelopers);
+        balances[addressFundBounty] = balances[addressFundBounty].add(fundBounty);
+        tokenAllocated = tokenAllocated.add(fundDevelopers).add(fundBounty);
+        balances[_wallet] = balances[_wallet].add(INITIAL_SUPPLY).sub(tokenAllocated);
         result = true;
     }
 
@@ -547,20 +556,7 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
             HardCapReached();
             return 0;
         }
-        if (_weiAmount < weiMinSale) {
-            return 0;
-        }
         return addTokens;
-    }
-
-    function ownerBurnToken(uint _value) public onlyOwner {
-        //uint256 autoValue = fundBountyAndTeam.add(totalSupply.sub(balances[owner]));
-        require(_value > 0);
-        require(_value <= balances[owner]);
-        require(_value <= totalSupply);
-        balances[owner] = balances[owner].sub(_value);
-        totalSupply = totalSupply.sub(_value);
-        Burn(owner, _value);
     }
 
     function finalize() public onlyOwner inState(State.Active) returns (bool result) {
@@ -570,10 +566,6 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
         finishMinting();
         Finalized();
         result = true;
-    }
-
-    function removeContract() public onlyOwner {
-        selfdestruct(owner);
     }
 
 }

@@ -3,18 +3,18 @@ var FooozCrowdsale = artifacts.require("./FooozCrowdsale.sol");
 
 contract('FooozCrowdsale', (accounts) => {
     var contract;
-    var owner = "0x305EE1AEA4cE97F764618F0540EA6Fb37C7186Ba";
+    var owner = "0x6d2Faf6A5706bCC104E9C001f0Af585c11F72437";
     //var owner = accounts[0];
-    var rate = 1000;
+    var rate = 3362*1.1;
     var buyWei = 5 * 10**17;
-    var rateNew = 1000;
+    var rateNew = 3362*1.1;
     var buyWeiNew = 5 * 10**17;
     var buyWeiMin = 1 * 10**16;
-    var buyWeiCap = 30000 * (10 ** 18);
+    var buyWeiCap = 120000 * (10 ** 18);
 
     var period = 0;
 
-    var totalSupply = 33e+24;
+    var totalSupply = 466133330* (10 ** 18);
 
     it('should deployed contract', async ()  => {
         assert.equal(undefined, contract);
@@ -32,24 +32,8 @@ contract('FooozCrowdsale', (accounts) => {
         assert.equal(totalSupply, balanceOwner);
     });
 
-    it('verification owner burn token', async ()  => {
-        var burnTokens = 20 * 10**22;
-        var totalSupplyBefore = await contract.totalSupply.call();
-        //console.log("totalSupplyBefore = " + totalSupplyBefore)
-        var balanceOwnerBeforeBurn = await contract.balanceOf(owner);
-        //console.log("balanceOwnerBeforeBurn = " + balanceOwnerBeforeBurn);
-        await contract.ownerBurnToken(burnTokens, {from:owner});
-        var balanceOwnerAfterBurn = await contract.balanceOf(owner);
-        //console.log("balanceOwnerAfterBurn = " + balanceOwnerAfterBurn);
-
-        var totalSupplyAfterBurn = await contract.totalSupply.call();
-        //console.log("totalSupplyAfterBurn = " + totalSupplyAfterBurn)
-        assert.equal(totalSupplyBefore, Number(totalSupplyAfterBurn) + Number(burnTokens));
-        assert.equal(balanceOwnerBeforeBurn, Number(balanceOwnerAfterBurn) + Number(burnTokens));
-
-    });
-
     it('verification of receiving Ether', async ()  => {
+
         var tokenAllocatedBefore = await contract.tokenAllocated.call();
         var balanceAccountTwoBefore = await contract.balanceOf(accounts[2]);
         var weiRaisedBefore = await contract.weiRaised.call();
@@ -64,8 +48,7 @@ contract('FooozCrowdsale', (accounts) => {
         //console.log("tokenAllocatedAfter = " + tokenAllocatedAfter);
 
         assert.isTrue(tokenAllocatedBefore < tokenAllocatedAfter);
-        assert.equal(0, tokenAllocatedBefore);
-        assert.equal(rate*buyWei, tokenAllocatedAfter);
+        //assert.equal(rate*buyWei, tokenAllocatedAfter - tokenAllocatedBefore);
 
         var balanceAccountTwoAfter = await contract.balanceOf(accounts[2]);
         assert.isTrue(balanceAccountTwoBefore < balanceAccountTwoAfter);
@@ -93,9 +76,67 @@ contract('FooozCrowdsale', (accounts) => {
         var balanceOwnerAfter = await contract.balanceOf(owner);
         //console.log("balanceOwnerAfter = " + Number(balanceOwnerAfter));
         //assert.equal(totalSupply - balanceAccountThreeAfter - balanceAccountTwoAfter, balanceOwnerAfter);
-
     });
 
+    it('verification define ICO period', async ()  => {
+        var currentDate = 1519516800; // Feb, 25
+        period = await contract.getPeriod(currentDate);
+        assert.equal(10, period);
+
+        currentDate = 1522627200; // Apr, 02
+        period = await contract.getPeriod(currentDate);
+        assert.equal(0, period);
+
+        currentDate = 1523318400; // Apr, 10
+        period = await contract.getPeriod(currentDate);
+        assert.equal(1, period);
+
+        currentDate = 1524182400; // Apr, 20
+        period = await contract.getPeriod(currentDate);
+        assert.equal(2, period);
+
+        currentDate = 1525219200; // May, 02
+        period = await contract.getPeriod(currentDate);
+        assert.equal(3, period);
+
+        currentDate = 1525910400; // May, 10
+        period = await contract.getPeriod(currentDate);
+        assert.equal(4, period);
+
+        currentDate = 1526774400; // May, 20
+        period = await contract.getPeriod(currentDate);
+        assert.equal(5, period);
+
+        currentDate = 1536537600; // Sep, 10
+        period = await contract.getPeriod(currentDate);
+        assert.equal(10, period);
+    });
+
+    it('verification define After ICO period', async ()  => {
+        var currentDate = 1519516800; // Feb, 25
+        period = await contract.getAfterIcoPeriod(currentDate);
+        assert.equal(0, period);
+
+        currentDate = 1564704000; // Aug, 02, 2019
+        period = await contract.getAfterIcoPeriod(currentDate);
+        assert.equal(100, period);
+
+        currentDate = 1627862400; // Aug, 02, 2021
+        period = await contract.getAfterIcoPeriod(currentDate);
+        assert.equal(200, period);
+
+        currentDate = 1690934400; // Aug, 02, 2023
+        period = await contract.getAfterIcoPeriod(currentDate);
+        assert.equal(300, period);
+
+        currentDate = 1754092800; // Aug, 02, 2025
+        period = await contract.getAfterIcoPeriod(currentDate);
+        assert.equal(400, period);
+
+        currentDate = 1817164800; // Aug, 02, 2027
+        period = await contract.getAfterIcoPeriod(currentDate);
+        assert.equal(0, period);
+    });
 
     it('verification tokens limit min amount', async ()  => {
             var numberTokensMinWey = await contract.validPurchaseTokens.call(buyWeiMin);
@@ -107,7 +148,7 @@ contract('FooozCrowdsale', (accounts) => {
     it('verification tokens cap reached', async ()  => {
             var numberTokensNormal = await contract.validPurchaseTokens.call(buyWei);
             //console.log("numberTokensNormal = " + numberTokensNormal);
-            assert.equal(1000*buyWei, numberTokensNormal);
+            assert.equal(rate*buyWei, numberTokensNormal);
 
             var numberTokensFault = await contract.validPurchaseTokens.call(buyWeiCap);
             //console.log("numberTokensFault = " + numberTokensFault);
