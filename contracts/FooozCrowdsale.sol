@@ -486,38 +486,32 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
         return 0;
     }
 
-    function mintAfterIcoPeriod() public returns (bool) {
+    function mintAfterIcoPeriod() public returns (bool result) {
         uint256 totalCost = tokenAllocated.div(priceToken);
-        uint256 fundBonus = 0;
-        uint256 fundInvestment = 0;
-        uint256 fundBounty = 0;
-        uint256 fundAdministration = 0;
-        uint256 fundPublicWallet = 0;
-        //fundForSale
-        //uint256 totalFunds =
+        uint256 fivePercent = 0;
+        uint256 currentDate = now;
+        currentDate = 1564704000; //for test Aug, 02, 2019
+        bool changePeriod = false;
         uint256 nonSoldToken = totalSupply.sub(tokenAllocated);
         uint256 mintTokens = 0;
-        uint256 currentDate = now;
-        bool changePeriod = false;
+        result = false;
         if (currentAfterIcoPeriod < getAfterIcoPeriod(currentDate)){
             currentAfterIcoPeriod = currentAfterIcoPeriod.add(getAfterIcoPeriod(currentDate));
             changePeriod = true;
         }
-        if(weiRaised.mul(100).div(totalCost) < 200 || changePeriod){
+        if(totalCost.mul(100).div(weiRaised) < 200 || changePeriod){
             mintTokens = nonSoldToken.mul(25).div(100);
-            tokenAllocated = tokenAllocated.add(mintTokens);
+            fivePercent = mintTokens.mul(5).div(100);
 
-            fundBonus = fundBonus.add(mintTokens.mul(10).div(100));
-            fundInvestment = fundInvestment.add(mintTokens.mul(50).div(100));
-            fundBounty = fundBounty.add(mintTokens.mul(5).div(100));
-            fundAdministration = fundAdministration.add(mintTokens.mul(5).div(100));
-            fundPublicWallet = mintTokens.sub(fundBonus.add(fundInvestment).add(fundBounty).add(fundAdministration));
+            balances[addressFundBonus] = balances[addressFundBonus].add(fivePercent.mul(2));
+            balances[addressFundBounty] = balances[addressFundBounty].add(fivePercent);
+            balances[addressFundInvestment] = balances[addressFundInvestment].add(fivePercent.mul(10));
+            balances[addressFundAdministration] = balances[addressFundAdministration].add(fivePercent);
+            balances[ownerTwo] = balances[ownerTwo].add(fivePercent.mul(6));
 
-            balances[addressFundBonus] = balances[addressFundBonus].add(fundBonus);
-            balances[addressFundBounty] = balances[addressFundBounty].add(fundBounty);
-            balances[addressFundInvestment] = balances[addressFundInvestment].add(fundInvestment);
-            balances[addressFundAdministration] = balances[addressFundAdministration].add(fundAdministration);
-            balances[owner] = balances[owner].add(fundPublicWallet);
+            balances[owner] = balances[owner].sub(fivePercent.mul(20));
+            tokenAllocated = tokenAllocated.add(fivePercent.mul(20));
+            result = true;
         }
     }
 
