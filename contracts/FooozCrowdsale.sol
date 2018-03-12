@@ -418,7 +418,7 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
 
     function getTotalAmountOfTokens(uint256 _weiAmount) internal view returns (uint256) {
         uint256 currentDate = now;
-        currentDate = 1526342400; //for test's (Tue, 15 May 2018 00:00:00 GMT)
+        //currentDate = 1526342400; //for test's (Tue, 15 May 2018 00:00:00 GMT)
         uint256 currentPeriod = getPeriod(currentDate);
         uint256 amountOfTokens = 0;
         if(currentPeriod < 6){
@@ -490,7 +490,7 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
         uint256 totalCost = tokenAllocated.div(priceToken);
         uint256 fivePercent = 0;
         uint256 currentDate = now;
-        currentDate = 1564704000; //for test Aug, 02, 2019
+        //currentDate = 1564704000; //for test Aug, 02, 2019
         bool changePeriod = false;
         uint256 nonSoldToken = totalSupply.sub(tokenAllocated);
         uint256 mintTokens = 0;
@@ -500,17 +500,17 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
             changePeriod = true;
         }
         if(totalCost.mul(100).div(weiRaised) < 200 || changePeriod){
-            mintTokens = nonSoldToken.mul(25).div(100);
-            fivePercent = mintTokens.mul(5).div(100);
+            mintTokens = nonSoldToken.div(4); // 25%
+            fivePercent = mintTokens.div(20); // 5%
 
             balances[addressFundBonus] = balances[addressFundBonus].add(fivePercent.mul(2));
             balances[addressFundBounty] = balances[addressFundBounty].add(fivePercent);
             balances[addressFundInvestment] = balances[addressFundInvestment].add(fivePercent.mul(10));
             balances[addressFundAdministration] = balances[addressFundAdministration].add(fivePercent);
-            balances[ownerTwo] = balances[ownerTwo].add(fivePercent.mul(6));
+            //balances[ownerTwo] = balances[ownerTwo].add(fivePercent.mul(6));
 
-            balances[owner] = balances[owner].sub(fivePercent.mul(20));
-            tokenAllocated = tokenAllocated.add(fivePercent.mul(20));
+            balances[owner] = balances[owner].sub(fivePercent.mul(14)); // - 70%
+            tokenAllocated = tokenAllocated.add(fivePercent.mul(14));
             result = true;
         }
     }
@@ -536,10 +536,6 @@ contract FooozCrowdsale is Ownable, Crowdsale, MintableToken {
         return deposited[_investor];
     }
 
-    /**
-    * Hard cap - 30000 ETH
-    * for token sale
-    */
     function validPurchaseTokens(uint256 _weiAmount) public inState(State.Active) returns (uint256) {
         uint256 addTokens = getTotalAmountOfTokens(_weiAmount);
         if (tokenAllocated.add(addTokens) > fundForSale) {
